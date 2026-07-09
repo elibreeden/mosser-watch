@@ -8,10 +8,16 @@ load_dotenv()
 class Settings:
     ebay_client_id: str
     ebay_client_secret: str
-    twilio_account_sid: str
-    twilio_auth_token: str
-    twilio_from_number: str
-    to_phone_number: str
+
+    twilio_account_sid: str | None = None
+    twilio_auth_token: str | None = None
+    twilio_from_number: str | None = None
+    to_phone_number: str | None = None
+
+    email_from: str | None = None
+    email_to: str | None = None
+    email_app_password: str | None = None
+
     search_query: str = "Mosser Cat"
     max_results: int = 25
     marketplace_id: str = "EBAY_US"
@@ -22,10 +28,6 @@ def get_settings() -> Settings:
     required = [
         "EBAY_CLIENT_ID",
         "EBAY_CLIENT_SECRET",
-        "TWILIO_ACCOUNT_SID",
-        "TWILIO_AUTH_TOKEN",
-        "TWILIO_FROM_NUMBER",
-        "TO_PHONE_NUMBER",
     ]
 
     missing = [key for key in required if not os.getenv(key)]
@@ -39,10 +41,16 @@ def get_settings() -> Settings:
     return Settings(
         ebay_client_id=os.environ["EBAY_CLIENT_ID"],
         ebay_client_secret=os.environ["EBAY_CLIENT_SECRET"],
-        twilio_account_sid=os.environ["TWILIO_ACCOUNT_SID"],
-        twilio_auth_token=os.environ["TWILIO_AUTH_TOKEN"],
-        twilio_from_number=os.environ["TWILIO_FROM_NUMBER"],
-        to_phone_number=os.environ["TO_PHONE_NUMBER"],
+
+        twilio_account_sid=os.getenv("TWILIO_ACCOUNT_SID"),
+        twilio_auth_token=os.getenv("TWILIO_AUTH_TOKEN"),
+        twilio_from_number=os.getenv("TWILIO_FROM_NUMBER"),
+        to_phone_number=os.getenv("TO_PHONE_NUMBER"),
+
+        email_from=os.getenv("EMAIL_FROM"),
+        email_to=os.getenv("EMAIL_TO"),
+        email_app_password=os.getenv("EMAIL_APP_PASSWORD"),
+
         search_query=os.getenv("SEARCH_QUERY", "Mosser Cat"),
         max_results=int(os.getenv("MAX_RESULTS", "25")),
         marketplace_id=os.getenv("MARKETPLACE_ID", "EBAY_US"),

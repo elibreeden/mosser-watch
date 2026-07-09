@@ -2,7 +2,7 @@ import argparse
 import logging
 from config import get_settings
 from ebay import get_ebay_access_token, search_ebay_items
-from notifier import format_sms, send_sms
+from notifier import format_sms, send_sms, send_email
 from storage import load_seen_item_ids, save_seen_item_ids, get_new_items
 
 logging.basicConfig(
@@ -59,18 +59,45 @@ def run_once(dry_run: bool = False, notify_existing: bool = False) -> None:
         sms_body = format_sms(item)
 
         if dry_run:
-            print("\n--- DRY RUN SMS ---")
+            print("\n--- DRY RUN MESSAGE ---")
             print(sms_body)
-            print("--- END SMS ---\n")
+            print("--- END MESSAGE ---\n")
+
         else:
-            sid = send_sms(
-                account_sid=settings.twilio_account_sid,
-                auth_token=settings.twilio_auth_token,
-                from_number=settings.twilio_from_number,
-                to_number=settings.to_phone_number,
-                body=sms_body,
-            )
-            logging.info("Sent SMS for item %s. Twilio SID: %s", item["item_id"], sid)
+            # Send email if configured
+            if (
+                settings.email_from
+                and settings.email_to
+                and settings.email_app_password
+            ):
+                send_email(
+                    from_email=settings.email_from,
+                    app_password=settings.email_app_password,
+                    to_email=settings.email_to,
+                    subject="🐈 New Mosser Watch Listing!",
+                    body=sms_body,
+                )
+                logging.info("Email sent for item %s.", item["item_id"])
+
+            # Send SMS if Twilio is configured
+            if (
+                settings.twilio_account_sid
+                and settings.twilio_auth_token
+                and settings.twilio_from_number
+                and settings.to_phone_number
+            ):
+                sid = send_sms(
+                    account_sid=settings.twilio_account_sid,
+                    auth_token=settings.twilio_auth_token,
+                    from_number=settings.twilio_from_number,
+                    to_number=settings.to_phone_number,
+                    body=sms_body,
+                )
+                logging.info(
+                    "SMS sent for item %s. SID: %s",
+                    item["item_id"],
+                    sid,
+                )
 
         seen_ids.add(item["item_id"])
 

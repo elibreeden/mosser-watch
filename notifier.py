@@ -1,4 +1,8 @@
+import smtplib
+from email.message import EmailMessage
+
 from twilio.rest import Client
+
 
 def format_sms(item: dict) -> str:
     price = "Price unavailable"
@@ -25,6 +29,7 @@ def format_sms(item: dict) -> str:
         f"{item.get('item_web_url', '')}"
     )
 
+
 def send_sms(
     account_sid: str,
     auth_token: str,
@@ -33,9 +38,33 @@ def send_sms(
     body: str,
 ) -> str:
     client = Client(account_sid, auth_token)
+
     message = client.messages.create(
         body=body,
         from_=from_number,
         to=to_number,
     )
+
     return message.sid
+
+
+def send_email(
+    from_email: str,
+    app_password: str,
+    to_email: str,
+    subject: str,
+    body: str,
+) -> None:
+    """
+    Send a notification email using Gmail.
+    """
+
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = from_email
+    msg["To"] = to_email
+    msg.set_content(body)
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        smtp.login(from_email, app_password)
+        smtp.send_message(msg)
