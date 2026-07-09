@@ -29,6 +29,20 @@ def run_once(dry_run: bool = False, notify_existing: bool = False) -> None:
         max_price=settings.max_price,
     )
 
+    # items = [
+    #     {
+    #         "item_id": "test-001",
+    #         "title": "Mosser Glass Cat - Test Listing",
+    #         "price_value": "42.00",
+    #         "price_currency": "USD",
+    #         "shipping_value": "8.00",
+    #         "condition": "Used",
+    #         "seller_username": "test_seller",
+    #         "item_web_url": "https://www.ebay.com/",
+    #         "buying_options": ["FIXED_PRICE"],
+    #     }
+    # ]
+
     logging.info("Found %s listings from eBay.", len(items))
 
     seen_ids = load_seen_item_ids()
