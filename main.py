@@ -1,5 +1,7 @@
 import argparse
 import logging
+import time
+
 from config import get_settings
 from ebay import get_ebay_access_token, search_ebay_items
 from notifier import format_sms, send_sms, send_email
@@ -9,6 +11,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s",
 )
+
 
 def run_once(dry_run: bool = False, notify_existing: bool = False) -> None:
     settings = get_settings()
@@ -29,21 +32,7 @@ def run_once(dry_run: bool = False, notify_existing: bool = False) -> None:
         max_price=settings.max_price,
     )
 
-    # items = [
-    #     {
-    #         "item_id": "test-001",
-    #         "title": "Mosser Glass Cat - Test Listing",
-    #         "price_value": "42.00",
-    #         "price_currency": "USD",
-    #         "shipping_value": "8.00",
-    #         "condition": "Used",
-    #         "seller_username": "test_seller",
-    #         "item_web_url": "https://www.ebay.com/",
-    #         "buying_options": ["FIXED_PRICE"],
-    #     }
-    # ]
-
-    logging.info("Found %s listings from eBay.", len(items))
+    logging.info("Checked eBay. Found %s listings.", len(items))
 
     seen_ids = load_seen_item_ids()
 
@@ -56,15 +45,14 @@ def run_once(dry_run: bool = False, notify_existing: bool = False) -> None:
     logging.info("Found %s new listings.", len(new_items))
 
     for item in new_items:
-        sms_body = format_sms(item)
+        message_body = format_sms(item)
 
         if dry_run:
             print("\n--- DRY RUN MESSAGE ---")
-            print(sms_body)
+            print(message_body)
             print("--- END MESSAGE ---\n")
 
         else:
-            # Send email if configured
             if (
                 settings.email_from
                 and settings.email_to
@@ -75,11 +63,10 @@ def run_once(dry_run: bool = False, notify_existing: bool = False) -> None:
                     app_password=settings.email_app_password,
                     to_email=settings.email_to,
                     subject="🐈 New Mosser Watch Listing!",
-                    body=sms_body,
+                    body=message_body,
                 )
                 logging.info("Email sent for item %s.", item["item_id"])
 
-            # Send SMS if Twilio is configured
             if (
                 settings.twilio_account_sid
                 and settings.twilio_auth_token
@@ -91,42 +78,95 @@ def run_once(dry_run: bool = False, notify_existing: bool = False) -> None:
                     auth_token=settings.twilio_auth_token,
                     from_number=settings.twilio_from_number,
                     to_number=settings.to_phone_number,
-                    body=sms_body,
+                    body=message_body,
                 )
-                logging.info(
-                    "SMS sent for item %s. SID: %s",
-                    item["item_id"],
-                    sid,
-                )
+                logging.info("SMS sent for item %s. SID: %s", item["item_id"], sid)
 
         seen_ids.add(item["item_id"])
 
     save_seen_item_ids(seen_ids)
-    logging.info("Done.")
+
+    if new_items:
+        logging.info("Sent notifications for %s new listing(s).", len(new_items))
+    else:
+        logging.info("No new listings.")
+
+
+def run_watch_mode(
+    interval_seconds: int,
+    dry_run: bool = False,
+    notify_existing: bool = False,
+) -> None:
+    logging.info(
+        "Mosser Watch started. Checking every %s seconds.",
+        interval_seconds,
+    )
+
+    cycle_count = 0
+
+    while True:
+        cycle_count += 1
+
+        try:
+            run_once(
+                dry_run=dry_run,
+                notify_existing=notify_existing,
+            )
+
+            if cycle_count % 20 == 0:
+                logging.info(
+                    "Mosser Watch is still running. Completed %s checks.",
+                    cycle_count,
+                )
+
+        except Exception:
+            logging.exception("Unexpected error during watch cycle.")
+
+        time.sleep(interval_seconds)
+
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Mosser Cat eBay SMS alert bot")
+    parser = argparse.ArgumentParser(description="Mosser Watch eBay alert bot")
+
     parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print messages instead of sending them.",
     )
+
     parser.add_argument(
         "--notify-existing",
         action="store_true",
         help="Treat current search results as new. Useful for testing.",
     )
 
+    parser.add_argument(
+        "--watch",
+        action="store_true",
+        help="Keep running and check repeatedly.",
+    )
+
+    parser.add_argument(
+        "--interval",
+        type=int,
+        default=30,
+        help="Seconds between checks in watch mode.",
+    )
+
     args = parser.parse_args()
 
     try:
-        run_once(
-            dry_run=args.dry_run,
-            notify_existing=args.notify_existing,
-        )
+        if args.watch:
+            run_watch_mode(
+                interval_seconds=args.interval,
+                dry_run=args.dry_run,
+                notify_existing=args.notify_existing,
+            )
+        else:
+            run_once(
+                dry_run=args.dry_run,
+                notify_existing=args.notify_existing,
+            )
 
     except KeyboardInterrupt:
         logging.info("Stopped by user.")
-
-    except Exception:
-        logging.exception("Unexpected error while running Mosser Watch.")
