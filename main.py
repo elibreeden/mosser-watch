@@ -109,13 +109,24 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Print SMS messages instead of sending them.",
+        help="Print messages instead of sending them.",
     )
     parser.add_argument(
         "--notify-existing",
         action="store_true",
-        help="Treat current search results as new. Useful for testing formatting.",
+        help="Treat current search results as new. Useful for testing.",
     )
 
     args = parser.parse_args()
-    run_once(dry_run=args.dry_run, notify_existing=args.notify_existing)
+
+    try:
+        run_once(
+            dry_run=args.dry_run,
+            notify_existing=args.notify_existing,
+        )
+
+    except KeyboardInterrupt:
+        logging.info("Stopped by user.")
+
+    except Exception:
+        logging.exception("Unexpected error while running Mosser Watch.")
