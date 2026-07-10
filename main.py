@@ -34,6 +34,9 @@ def run_once(dry_run: bool = False, notify_existing: bool = False) -> None:
 
     logging.info("Checked eBay. Found %s listings.", len(items))
 
+    if items:
+        logging.info("Newest returned item: %s", items[0].get("title"))
+
     seen_ids = load_seen_item_ids()
 
     if notify_existing:
